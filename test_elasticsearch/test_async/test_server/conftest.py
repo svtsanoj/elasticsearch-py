@@ -21,6 +21,7 @@ import os
 import pytest
 
 import elasticsearch
+from elasticsearch.helpers.test import ELASTICSEARCH_URL
 
 from ...utils import wipe_cluster
 
@@ -34,15 +35,15 @@ async def async_client():
         if not hasattr(elasticsearch, "AsyncElasticsearch"):
             pytest.skip("test requires 'AsyncElasticsearch'")
 
-        kw = {
-            "timeout": 3,
-            "ca_certs": ".ci/certs/ca.pem",
-            "connection_class": elasticsearch.AIOHttpConnection,
-        }
+        kw = {"timeout": 3, "ca_certs": ".ci/certs/ca.pem"}
+        if "PYTHON_CONNECTION_CLASS" in os.environ:
+            from elasticsearch import connection
 
-        client = elasticsearch.AsyncElasticsearch(
-            [os.environ.get("ELASTICSEARCH_HOST", {})], **kw
-        )
+            kw["connection_class"] = getattr(
+                connection, os.environ["PYTHON_CONNECTION_CLASS"]
+            )
+
+        client = elasticsearch.AsyncElasticsearch(ELASTICSEARCH_URL, **kw)
 
         # wait for yellow status
         for _ in range(100):
